@@ -37,6 +37,7 @@ def convert_excel_to_pdf(excel_file, pdf_file):
 
 def fetch_products(file,date,company,tc,tl,orderNO,emails):
     # print("hi")
+    # os.startfile(file)
     name,extension=company.split(".")
     workbook = load_workbook(file)
     
@@ -65,6 +66,12 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
     countStr=None
     findStar=False
     
+    small_index=None
+    medium_index=None
+    large_index=None
+    xl_index=None
+    uni_index=None
+    
     head=[]
 
     # Find 'Qty.' column
@@ -78,7 +85,7 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 # find_qty = True
                 # qty_column = cell.column
                 headingRow=cell.row 
-                st.write(headingRow)
+                # st.write(headingRow)
                 # st.write(f"'qty' found at Row: {cell.row}, Column: {cell.column}")
                 break
         if findHead:
@@ -106,15 +113,30 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
         nullCount=0
         count=0
         for cell in sheet[headingRow]:
-            st.write(cell.value)
+            # st.write(cell.value)
+            
             
             if (cell.value):
                 if "qty" in cell.value.lower().strip() or "quantity" in cell.value.lower().strip():
                     find_qty=True
                     qty_index=oCount
                 
-                if "name" in cell.value.lower().strip() or "product" in cell.value.lower().strip():
+                if "name" in cell.value.lower().strip() or "product" in cell.value.lower().strip() or "item" in cell.value.lower().strip():
                     name_index=oCount
+                
+                
+                if "small" in cell.value.lower().strip():
+                    small_index=oCount
+                if "large" in cell.value.lower().strip():
+                    large_index=oCount
+                if "medium" in cell.value.lower().strip():
+                    medium_index=oCount
+                if "xl" in cell.value.lower().strip():
+                    xl_index=oCount
+                if "uni." in cell.value.lower().strip() or "universal" in cell.value.lower().strip():
+                    uni_index=oCount
+                    
+                    
                 oCount+=1
                 head.append(cell.value.strip())
             else:
@@ -122,46 +144,65 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 nullHead.append(count)
                 # nullCount+=1
             count+=1
-            st.write(cell.value)
+            # st.write(cell.value)
             
             # count+=1
                 
-        st.write(head)
+        # st.write(head)
         leng=len(head)+len(nullHead)
         # st.write(leng)
         blank=True
-        st.write(nullHead)
+        # st.write(nullHead)
         product_rows=[]
         for row in sheet.iter_rows(min_row=headingRow + 1):
             row_data=[]
             for i in range (0,leng):
                 if i not in nullHead:
-                    st.write(i)
-                    row_data.append(row[i].value)
-                    
+                    # st.write(i)
+                    if row[i].value != None :
+                        row_data.append(str(row[i].value).strip())
+                    else:
+                        row_data.append(row[i].value)
             product_rows.append(row_data) 
             
         
-        st.write(product_rows) 
+        # st.write(product_rows) 
         
         df = pd.DataFrame(product_rows,columns=head)
+        rowThank =df[df.apply(lambda row: row.astype(str).str.lower().str.strip().str.contains('than').any(), axis=1)].index
+
+        if not rowThank.empty:
+            # Get the index of the first occurrence of 'than'
+            # st.write(rowThank)
+            row_index = rowThank[0]
+            # Drop rows below the 'thank' row (including the 'than' row itself)
+            df = df.iloc[:row_index]
+
+        
+
         df = df.dropna(how='all')
+        # st.write(df)
+        # columns_of_interest = df.columns.tolist()
+
+# Drop rows where all values are NaN or '-'
+        # df = df.dropna(how='all', subset=columns_of_interest).loc[~(df[columns_of_interest] == '-').all(axis=1)]    
+        
         for index, row in df.iterrows():
             if isinstance(row[head[0]], str) and all(pd.isna(row[col]) for col in head[1:]):
                 df = df.drop(index)
         df[df.columns[0]] = range(1, len(df) + 1)
-        st.write("ad:",df[df.columns[name_index]])
+        # st.write("ad:",df[df.columns[name_index]])
         countStr=1
         if "*" in str(df[df.columns[name_index]]):
             findStar=True
             for i in range(len(df)):
                 if "*" in str(df.iloc[i, name_index]):
-                    st.write("star found")
+                    # st.write("star found")
                     df.iloc[i, 0] = None
                     continue
                 df.iloc[i, 0] = countStr
                 countStr+=1
-                st.write(df.iloc[i, name_index])
+                # st.write(df.iloc[i, name_index])
 
 
             
@@ -170,26 +211,28 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
         # Display the DataFrame
         # st.write(df)
         edited_df = st.data_editor(df, hide_index=True,width=1500)
-        st.write(edited_df)
+        # st.write(uni_index,small_index,medium_index,large_index,xl_index)
         if st.button("Save Changes"):
-                st.write(edited_df.columns[qty_index])
+                # st.write(edited_df)
+                # st.write(edited_df.columns[qty_index])
                 if not findStar:
                     # edited_df = edited_df[(edited_df[edited_df.columns[qty_index]].notna()) & (edited_df[edited_df.columns[qty_index]] != 0)]
-                    st.write(edited_df.columns[qty_index])
+                    # st.write(edited_df.columns[qty_index])
                     edited_df = edited_df.dropna(subset=[edited_df.columns[qty_index]])
                     edited_df = edited_df.dropna(axis=1, how='all')
                     edited_df[edited_df.columns[0]] = range(1, len(edited_df) + 1)
-                    st.write(edited_df)
+                    # st.write(edited_df)
             
                 if findStar:
-                    edited_df = edited_df.dropna(axis=1, how='all').loc[:, (edited_df != 0).any(axis=0)]
+                    # edited_df = edited_df.dropna(axis=1, how='all').loc[:, (edited_df != 0).any(axis=0)]
 
                     delete_indices = []
                     stack = []  # temporary stack to store row indices of the current category
                     quantity_found = False
-
+                    # st.write("fi:",edited_df   )
                     # Iterate through DataFrame
                     for index, row in edited_df.iterrows():
+                        # st.write(row)
                         # Detect start of a new category by checking 'Serial No.'
                         if pd.notna(row[edited_df.columns[0]]) :
                             # Check the previous category: if no quantity was found, mark all rows in the stack for deletion
@@ -204,10 +247,17 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                             stack.append(index)
                         
                         # If a quantity is found in this row, set quantity_found to True
-                        if pd.notna(row[edited_df.columns[qty_index]]) and   row[edited_df.columns[qty_index]] != 0:
-                            quantity_found = True
+                        if qty_index:
+                            if pd.notna(row[edited_df.columns[qty_index]]) and   row[edited_df.columns[qty_index]] != 0:
+                                quantity_found = True
                             # st.write(stack)
-
+                        else:
+                            if small_index and medium_index and large_index and xl_index and uni_index:
+                                if pd.notna(row[edited_df.columns[small_index]] or row[edited_df.columns[medium_index]] or row[edited_df.columns[large_index] ] or row[edited_df.columns[xl_index]] or row[edited_df.columns[uni_index]]) and  (row[edited_df.columns[small_index]] != 0 or row[edited_df.columns[medium_index]] != 0 or row[edited_df.columns[large_index]] != 0 or row[edited_df.columns[xl_index]] != 0 or row[edited_df.columns[uni_index]] != 0):
+                                    quantity_found = True
+                            else:
+                                if pd.notna( row[edited_df.columns[medium_index]] or row[edited_df.columns[large_index] ]) and  (row[edited_df.columns[medium_index]] != 0 or row[edited_df.columns[large_index]] != 0 or row[edited_df.columns[xl_index]] != 0 ):
+                                    quantity_found = True
                     # Final check for the last category
                     if stack and not quantity_found:
                         delete_indices.extend(stack)
@@ -217,19 +267,20 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
 
                     # Reset index and print the updated DataFrame
                     edited_df.reset_index(drop=True, inplace=True)
-                    st.write("Filtered DataFrame:")
-                    st.write(edited_df)
+                    # st.write("Filtered DataFrame:")
+                    # st.write(edited_df)
                     
                     if findStar:
                         countStr=1  
                         for i in range(len(edited_df)):
                             if "*" in str(edited_df.iloc[i, name_index]):
-                                st.write("star found")
+                                # st.write("star found")
                                 edited_df.iloc[i, 0] = None
                                 continue
                             edited_df.iloc[i, 0] = countStr
                             countStr+=1
-                            st.write(edited_df.iloc[i, name_index])
+                            # st.write(edited_df.iloc[i, name_index])
+                    edited_df = edited_df.dropna(axis=1, how='all').loc[:, (edited_df != 0).any(axis=0)]
                 
                 excel_file = 'header_template.xlsx'  # Replace with your file path
                 
@@ -238,29 +289,41 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 # Assuming data is in the first sheet (index 0)
                 sheet = workbook.worksheets[0]
 
-                st.write(edited_df.columns.tolist())
+                # st.write(edited_df.columns.tolist())
                 # Iterate through rows starting from row 15 (index 14 in Python)
                 data_to_write = edited_df.values.tolist()
                 font_style = Font(name='Arial', size=12, bold=True)
                 fill_style = PatternFill(start_color='C4BD97', end_color='C4BD97', fill_type='solid')
                 thankFont=Font(name='Arial', size=12, bold=True,italic=True)
+                red_font = Font(color="FF0000", size=12, bold=True)
                 # align_style = Alignment(horizontal='center', vertical='center')
                 align_left = Alignment(horizontal='left', vertical='center')
                 # Write data starting from row 15
                 for col_idx, header_value in enumerate(edited_df.columns.tolist(), start=1):
                     cell = sheet.cell(row=15, column=col_idx)
-                    cell.value = header_value
+                    if "none" in header_value.lower().strip():
+                        cell.value=""
+                    else:   
+                        cell.value = header_value
                     cell.font = font_style
                     cell.fill = fill_style
                     cell.alignment=align_left
 
 
-                # Write data with formatting starting from row 15
+                # Write data with formatting starting from row 17
                 for row_idx, row_data in enumerate(data_to_write, start=17):
                     for col_idx, cell_value in enumerate(row_data, start=1):
                         cell = sheet.cell(row=row_idx, column=col_idx)
-                        cell.value = cell_value
-                        cell.font = font_style
+                        if isinstance(cell_value, str) and cell_value.startswith('*'):
+                        # Remove the star and set the remaining value
+                            cell.value = cell_value[1:]
+                        # Apply red font color
+                            cell.font = red_font
+                        else:
+                        # Keep the original cell value
+                            cell.value = cell_value
+                        # cell.value = cell_value
+                            cell.font = font_style
                         cell.alignment=align_left
                 
                 cell = sheet.cell(row=row_idx+2, column=1)
@@ -286,7 +349,7 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 sheet['G7']=date
                 column_G_width = 15  # Adjust as needed based on your content and date display requirements
                 sheet.column_dimensions['G'].width = column_G_width
-                st.write(date)
+                # st.write(date)
                 
                 sheet['A8']=tc
                 # column_G_width = 15  # Adjust as needed based on your content and date display requirements
@@ -303,11 +366,12 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 save_directory=r"D:\PROJECTS\BS file manager\BS-order-manager\data files\Modified Files"
                 output_directory = os.path.join(save_directory, str(date))
                 os.makedirs(output_directory, exist_ok=True)
-                st.write(output_directory)
+                # st.write(output_directory)
                 output_file = os.path.join(output_directory, f'order_{name}_{date}.{extension}')
                 pdf_file = os.path.join(os.getcwd(), f"{save_directory}\{date}\order_{name}_{date}.pdf")
                 # Save the workbook
                 workbook.save(output_file)
+                st.success("File Saved Successfully!")
                 convert_excel_to_pdf(output_file, pdf_file)
                 if pdf_file:
                     with open(pdf_file, "rb") as f:
@@ -341,9 +405,9 @@ def main():
 
         # Display email addresses for the selected company
         if selectedCompany in file_list:
-            st.write(selectedCompany)
+            # st.write(selectedCompany)
             filePath = os.path.join(directory, selectedCompany)
-            st.write(filePath)
+            # st.write(filePath)
 
             pdf_file_path=fetch_products(filePath, selectedDate,selectedCompany,textCompany,textLocation,orderNO,emails)
 
