@@ -1,4 +1,5 @@
 import os
+import sys
 from openpyxl import load_workbook
 import win32com.client
 import pythoncom
@@ -169,7 +170,7 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
         # st.write(product_rows) 
         
         df = pd.DataFrame(product_rows,columns=head)
-        rowThank =df[df.apply(lambda row: row.astype(str).str.lower().str.strip().str.contains('than').any(), axis=1)].index
+        rowThank =df[df.apply(lambda row: row.astype(str).str.lower().str.strip().str.contains('thanking').any(), axis=1)].index
 
         if not rowThank.empty:
             # Get the index of the first occurrence of 'than'
@@ -363,7 +364,16 @@ def fetch_products(file,date,company,tc,tl,orderNO,emails):
                 # sheet.column_dimensions['G'].width = column_G_width
                 # st.write(date)
                 
-                save_directory=r"D:\PROJECTS\BS file manager\BS-order-manager\data files\Modified Files"
+                # save_directory=r"D:\PROJECTS\BS file manager\BS-order-manager\data files\Modified Files"
+                if getattr(sys, 'frozen', False):
+    # Running in a PyInstaller bundle
+                    BASE_DIR = os.path.dirname(sys.executable)
+                else:
+                    # Running in a normal Python environment
+                    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+                    
+                save_directory=os.path.join(BASE_DIR, "data files\Modified Files")
+                    
                 output_directory = os.path.join(save_directory, str(date))
                 os.makedirs(output_directory, exist_ok=True)
                 # st.write(output_directory)
@@ -386,7 +396,14 @@ def main():
     st.title("ORDER MANAGEMENT")
     
     st.sidebar.title("Company Options")
-    directory = r'D:\PROJECTS\BS file manager\BS-order-manager\data files\Purchase Order'
+    # directory = r'D:\PROJECTS\BS file manager\BS-order-manager\data files\Purchase Order'
+    if getattr(sys, 'frozen', False):
+    # Running in a PyInstaller bundle
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        # Running in a normal Python environment
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    directory=os.path.join(BASE_DIR, "data files\Purchase Order")
     file_list = os.listdir(directory)
 
                 
